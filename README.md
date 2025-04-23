@@ -9,9 +9,9 @@ Sistema para administração de batalhas entre Startups, desenvolvido para desaf
 
 ## Instalação
 
-1. Clone o repositório:
+1. Clone ou baixe o repositório:
 ```bash
-git clone https://github.com/seu-usuario/startup-rush.git
+git clone https://github.com/icarodvieira/startup-rush.git
 cd startup-rush
 ```
 
