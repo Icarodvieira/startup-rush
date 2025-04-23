@@ -1,6 +1,6 @@
 import inquirer from 'inquirer';
 import { createStartup, listStartups } from './controllers/startupController.js';
-import { startTournament } from './controllers/tournamentController.js';
+import { executeTournament, resetTournament } from './controllers/tournamentController.js';
 import { displayRankingTable } from './views/reportView.js';
 import { generateRankingTable } from './services/reportService.js';
 
@@ -16,6 +16,7 @@ async function main() {
                     { name: 'Cadastrar nova startup', value: 'create' },
                     { name: 'Listar startups', value: 'list' },
                     { name: 'Relatório', value: 'report' },
+                    { name: 'Reiniciar torneio', value: 'reset' },
                     { name: 'Sair', value: 'exit' }
                 ]
             }
@@ -29,7 +30,7 @@ async function main() {
                 await listStartups();
                 break;
             case 'tournament':
-                await startTournament();
+                await executeTournament();
                 break;
             case 'report':
                 displayRankingTable(generateRankingTable());
@@ -37,6 +38,9 @@ async function main() {
             case 'exit':
                 console.log('👋 Até logo!');
                 return;
+            case 'reset':
+                resetTournament();
+                break;
         }
     }
 }

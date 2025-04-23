@@ -12,6 +12,6 @@ export function generateRankingTable() {
             bugs: startup.stats.bugs,
             tracoes: startup.stats.tractions,
             investidores: startup.stats.angryInvestors,
-            fakeNews: startup.stats.fakeNews
+            fakeNews: startup.stats.fakeNews    
         }));
 } 

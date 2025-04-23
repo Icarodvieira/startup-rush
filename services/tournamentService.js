@@ -1,9 +1,10 @@
 import { startups } from '../data/database.js';
-import { EVENTS } from '../config/events.js';
 import { TOURNAMENT } from '../config/constants.js';
-import inquirer from 'inquirer';
+import { showBattleMenu } from '../views/battleMenu.js';
+import { showEventSelection, showStartupSelection } from '../views/battleView.js';
+import { format } from '../utils/format.js';
 
-export function tournamentInit() { // Embaralha as startups e cria as batalhas (em duplas)
+export function createRoundBattles() {
   const activeStartups = startups.filter(startup => startup.active);
   const shuffledStartups = activeStartups.slice().sort(() => Math.random() - 0.5);
   const battles = [];
@@ -15,88 +16,77 @@ export function tournamentInit() { // Embaralha as startups e cria as batalhas (
   return battles;
 }
 
+export async function executeRound() {
+  try {
+    const battles = createRoundBattles();
+    
+    while (battles.length > 0) {
+      const selectedBattle = await showBattleMenu(battles);
+      
+      if (selectedBattle === 'back') {
+        return 'back';
+      }
+      
+      await executeBattle(selectedBattle[0], selectedBattle[1]);
+      
+      const battleIndex = battles.findIndex(battle => 
+        battle[0] === selectedBattle[0] && battle[1] === selectedBattle[1]
+      );
+      if (battleIndex !== -1) {
+        battles.splice(battleIndex, 1);
+      }
+    }
+    
+    return startups.filter(startup => startup.active);
+  } catch(error) {
+    console.error(format.error(error.message));
+  }
+}
+
 export async function executeBattle(startup1, startup2) {
   if (!startup1.active || !startup2.active) {
     throw new Error('Uma das startups não está ativa para batalha');
   }
-
-  console.log(`\n⚔️ Batalha: ${startup1.name} vs ${startup2.name}`);
-  console.log(`Pontuação inicial: ${startup1.name}: ${startup1.score} | ${startup2.name}: ${startup2.score} \n`);
-
-  const events = Object.values(EVENTS);
+  
+  format.clear();
+  console.log(format.battle(`Batalha: ${startup1.name} vs ${startup2.name}`));
+  console.log(format.score(`Pontuação inicial: ${startup1.name}: ${startup1.score} | ${startup2.name}: ${startup2.score}\n`));
+  
   const usedEventsStartup1 = new Set();
   const usedEventsStartup2 = new Set();
-
+  
   while (true) {
-    const { eventType } = await inquirer.prompt([
-      {
-        type: 'list',
-        name: 'eventType',
-        message: 'Selecione um evento ou finalize a batalha:',
-        choices: [
-          ...events.map(event => ({
-            name: `${event.name} (${event.points > 0 ? '+' : ''}${event.points} pontos)`,
-            value: event
-          })),
-          new inquirer.Separator(),
-          { name: 'Finalizar batalha', value: null }
-        ]
-      }
-    ]);
-
+    const eventType = await showEventSelection();
     if (!eventType) break;
-
+    
     if (usedEventsStartup1.has(eventType.name) && usedEventsStartup2.has(eventType.name)) {
-      console.log('❌ Este evento já foi usado em ambas as startups!');
+      console.log(format.error('Este evento já foi usado em ambas as startups!'));
       continue;
     }
-
-    const { startup } = await inquirer.prompt([
-      {
-        type: 'list',
-        name: 'startup',
-        message: 'Para qual startup aplicar o evento?',
-        choices: [
-          { name: startup1.name, value: startup1 },
-          { name: startup2.name, value: startup2 }
-        ]
-      }
-    ]);
-
-    // Verifica se a startup já recebeu este evento
+    
+    const startup = await showStartupSelection(startup1, startup2);
     const usedEvents = startup === startup1 ? usedEventsStartup1 : usedEventsStartup2;
+    
     if(usedEvents.has(eventType.name)){
-      console.log('❌ Este evento já foi usado nesta startup!');
+      console.log(format.error('Este evento já foi usado nesta startup!'));
       continue;
     }
+    
     usedEvents.add(eventType.name);
-
-    // Incrementa o contador de estatísticas apropriado
-    switch(eventType.name) {
-      case 'Pitch convincente':
-        startup.stats.pitches++;
-        break;
-      case 'Produto com bugs':
-        startup.stats.bugs++;
-        break;
-      case 'Boa tração de usuários':
-        startup.stats.tractions++;
-        break;
-      case 'Investidor irritado':
-        startup.stats.angryInvestors++;
-        break;
-      case 'Fake news no pitch':
-        startup.stats.fakeNews++;
-        break;
-    }
-
-    startup.score += eventType.points;
-    console.log(`\n✅ Evento aplicado: ${eventType.name} para ${startup.name}`);
-    console.log(`Pontuação atual: ${startup1.name}: ${startup1.score} | ${startup2.name}: ${startup2.score}\n`);
+    applyEvent(startup, eventType);
+    format.clear();
+    console.log(format.battle(`Batalha: ${startup1.name} vs ${startup2.name}`));
+    console.log(format.event(`Evento aplicado: ${eventType.name} para ${startup.name}`));
+    console.log(format.score(`Pontuação atual: ${startup1.name}: ${startup1.score} | ${startup2.name}: ${startup2.score}\n`));
   }
+  
+  resolveBattle(startup1, startup2);
+}
 
+function resolveBattle(startup1, startup2) {
   let winner;
   let loser;
+  
   if (startup1.score > startup2.score) {
     winner = startup1;
     loser = startup2;
@@ -104,16 +94,39 @@ export async function executeBattle(startup1, startup2) {
     winner = startup2;
     loser = startup1;
   } else {
-    console.log('\n🦈 Shark Fight! Empate detectado!');
-    const randomBonus = Math.random() < 0.5 ? startup1 : startup2;
-    randomBonus.score += TOURNAMENT.SHARK_FIGHT_BONUS;
-    winner = randomBonus;
-    loser = randomBonus === startup1 ? startup2 : startup1;
-    console.log(`${randomBonus.name} recebeu +${TOURNAMENT.SHARK_FIGHT_BONUS} pontos!`);
+    console.log(format.sharkFight('Shark Fight! Empate detectado!'));
+    const randomStartup = Math.random() < 0.5 ? startup1 : startup2;
+    randomStartup.score += TOURNAMENT.SHARK_FIGHT_BONUS;
+    winner = randomStartup;
+    loser = randomStartup === startup1 ? startup2 : startup1;
+    console.log(format.info(`${winner.name} recebeu +${TOURNAMENT.SHARK_FIGHT_BONUS} pontos por vencer o Shark Fight!`));
   }
-
-  loser.active = false;
+  
+  
   winner.score += TOURNAMENT.VICTORY_BONUS;
-  console.log(`\n🏆 Vencedor: ${winner.name} com ${winner.score} pontos!`);
-  return winner;
+  console.log(format.winner(`Vencedor: ${winner.name} com ${winner.score} pontos!`));
+  console.log(format.info(`${winner.name} recebeu +${TOURNAMENT.VICTORY_BONUS} pontos!`));
+  loser.active = false;
+  console.log(format.info(`${loser.name} foi eliminado!`));
+}
+
+export function applyEvent(startup, event) {
+  switch(event.name) {
+    case 'Pitch convincente':
+      startup.stats.pitches++;
+      break;
+    case 'Produto com bugs':
+      startup.stats.bugs++;
+      break;
+    case 'Boa tração de usuários':
+      startup.stats.tractions++;
+      break;
+    case 'Investidor irritado':
+      startup.stats.angryInvestors++;
+      break;
+    case 'Fake news no pitch':
+      startup.stats.fakeNews++;
+      break;
+  }
+  startup.score += event.points;
 }

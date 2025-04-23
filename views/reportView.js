@@ -1,7 +1,7 @@
 import { Table } from 'console-table-printer';
 
 export function displayRankingTable(tableData) {
-    console.log('\n🏆 RANKING FINAL DAS STARTUPS\n');
+    console.log('\n🏆 RANKING DAS STARTUPS\n');
     
     const table = new Table({
         columns: [

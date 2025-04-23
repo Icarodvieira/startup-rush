@@ -1,35 +1,42 @@
-import { tournamentInit, executeBattle } from '../services/tournamentService.js';
+import { executeRound } from '../services/tournamentService.js';
 import { startups } from '../data/database.js';
-import { showBattleMenu } from '../views/battleMenu.js';
-import { TOURNAMENT } from '../config/constants.js';
+import { TOURNAMENT, STARTUP } from '../config/constants.js';
+import chalk from 'chalk';
+import { format } from '../utils/format.js';
 
-export async function startTournament() {
+export async function executeTournament() {
     try {
         validateTournamentRequirements();
-        const battles = tournamentInit();
+        let activeStartups = startups.filter(startup => startup.active);
         
-        while (battles.length > 0) {
-            const selectedBattle = await showBattleMenu(battles);
-            const winner = await executeBattle(selectedBattle[0], selectedBattle[1]);
+        while (activeStartups.length > 1) {
+            console.log('\n🎯 Nova rodada!');
             
-            const battleIndex = battles.findIndex(battle => 
-                battle[0] === selectedBattle[0] && battle[1] === selectedBattle[1]
-            );
-            if (battleIndex !== -1) {
-                battles.splice(battleIndex, 1);
+            if(activeStartups.length % 2 !== 0) {
+                const topScorer = activeStartups.sort((a, b) => b.score - a.score)[0];
+                console.log(`\n⚠️ Nesta rodada teriamos uma quantidade ímpar de startups, então o startup com a maior pontuação passou direto para a final!`);
+                console.log(`\n🌟 ${topScorer.name} passou direto para a próxima rodada por ter a maior pontuação (${topScorer.score} pontos)!`);
+                
+                topScorer.active = false;
+                const result = await executeRound();
+                if (result === 'back') return;
+                
+                topScorer.active = true;
+                activeStartups = result;
+                activeStartups.push(topScorer);
+            } else {
+                const result = await executeRound();
+                if (result === 'back') return;
+                activeStartups = result;
             }
         }
-
-        const activeStartups = startups.filter(startup => startup.active);
-
-        if (activeStartups.length > 1) {
-            console.log('\n🎯 Próxima rodada!');
-            await startTournament();
-        } else {
+        
+        if (activeStartups.length === 1) {
+            format.clear();
             const champion = activeStartups[0];
             console.log('\n🏆🏆🏆 CAMPEÃO DO STARTUP RUSH! 🏆🏆🏆');
-            console.log(`Parabéns ${champion.name}!`);
-            console.log(`Slogan: ${champion.slogan}`);
+            console.log(`Parabéns ${champion.name} (${champion.score} pts)!`);
+            console.log(chalk.bold.green(`${champion.slogan}`));
         }
     } catch(error) {
         console.error('❌ Erro no torneio:', error.message);
@@ -43,5 +50,16 @@ export function validateTournamentRequirements() {
     if(startups.length % 2 !== 0){
         throw new Error(`A quantidade de startups deve ser par para formar as batalhas. Atual: ${startups.length}`);
     }
-
 } 
+
+export function resetTournament() {
+    startups.forEach(startup => {
+        startup.active = true;
+        startup.score = STARTUP.INITIAL_SCORE;
+        startup.stats = {
+            ...STARTUP.INITIAL_STATS
+        };
+    });
+    format.clear();
+    console.log('🔄 Dados do torneio reiniciados com sucesso!');
+}

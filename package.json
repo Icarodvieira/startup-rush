@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -16,10 +17,11 @@
     "url": "https://github.com/Icarodvieira/startup-rush/issues"
   },
   "homepage": "https://github.com/Icarodvieira/startup-rush#readme",
-  "description": "",
+  "description": "Sistema para administração de batalhas entre Startups",
   "dependencies": {
+    "chalk": "^4.1.2",
     "console-table-printer": "^2.12.1",
-    "inquirer": "^12.5.2"
+    "inquirer": "^8.2.6"
   },
   "type": "module"
 }
