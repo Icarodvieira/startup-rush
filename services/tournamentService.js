@@ -103,8 +103,8 @@ function resolveBattle(startup1, startup2) {
   }
   
   
-  winner.score += TOURNAMENT.VICTORY_BONUS;
   console.log(format.winner(`Vencedor: ${winner.name} com ${winner.score} pontos!`));
+  winner.score += TOURNAMENT.VICTORY_BONUS;
   console.log(format.info(`${winner.name} recebeu +${TOURNAMENT.VICTORY_BONUS} pontos!`));
   loser.active = false;
   console.log(format.info(`${loser.name} foi eliminado!`));
